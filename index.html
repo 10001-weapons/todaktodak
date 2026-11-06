@@ -99,12 +99,52 @@ body {
 <meta property="og:image" content="https://10001-weapons.github.io/todaktodak/index.icon.png">
 <meta property="og:url" content="https://10001-weapons.github.io/todaktodak/">
 <meta name="theme-color" content="#120a06">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="토닥토닥 대장간">
 <style>
 html, body { background: #120a06; }
 #status { background: radial-gradient(circle at 50% 42%, #3a1a0c 0%, #120a06 72%); }
 #status-progress { width: 62%; max-width: 280px; accent-color: #ff9a52; }
 #status-notice { color: #f3eee6; font-family: sans-serif; }
 </style>
+<script>
+(function () {
+  // 소리 (11-06: 소리가 안 나요): phones keep web audio asleep until a touch; wake every audio context the
+  // game makes on the first touches, and on iPhone play a short silent clip so sound comes even with the
+  // silent switch on.
+  var ctxs = [];
+  var AC = window.AudioContext || window.webkitAudioContext;
+  if (AC) {
+    var Wrapped = function () { var c = new (Function.prototype.bind.apply(AC, [null].concat([].slice.call(arguments))))(); ctxs.push(c); return c; };
+    Wrapped.prototype = AC.prototype;
+    window.AudioContext = Wrapped;
+    if (window.webkitAudioContext) window.webkitAudioContext = Wrapped;
+  }
+  var tag = null;
+  function wake() {
+    ctxs.forEach(function (c) { if (c.state !== 'running') { try { c.resume(); } catch (e) {} } });
+    if (!tag) {
+      tag = document.createElement('audio');
+      tag.setAttribute('playsinline', '');
+      tag.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+    }
+    try { var p = tag.play(); if (p && p.catch) p.catch(function () {}); } catch (e) {}
+  }
+  ['touchstart', 'touchend', 'pointerdown', 'keydown', 'click'].forEach(function (n) { window.addEventListener(n, wake, { capture: true, passive: true }); });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) wake(); });
+  // 홈 화면에 추가 (11-06): keep the browser's offer for the game to show at the right moment
+  window.todak = {
+    offer: null,
+    standalone: function () { return (window.matchMedia && (matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches)) || navigator.standalone === true; },
+    ios: function () { return /iphone|ipad|ipod/i.test(navigator.userAgent); },
+    install: function () { var o = window.todak.offer; if (o) { o.prompt(); window.todak.offer = null; return 'asked'; } return window.todak.ios() ? 'ios' : 'none'; },
+    can: function () { return !window.todak.standalone() && (!!window.todak.offer || window.todak.ios()); }
+  };
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); window.todak.offer = e; });
+  window.addEventListener('appinstalled', function () { window.todak.offer = null; });
+})();
+</script>
 	</head>
 	<body>
 		<canvas id="canvas">
@@ -123,7 +163,7 @@ html, body { background: #120a06; }
 
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":25379100,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4,"serviceWorker":"index.service.worker.js"};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":25459192,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4,"serviceWorker":"index.service.worker.js"};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
