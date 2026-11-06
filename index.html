@@ -113,7 +113,7 @@ html, body { background: #120a06; }
   // 소리 (11-06: 소리가 안 나요): phones keep web audio asleep until a touch; wake every audio context the
   // game makes on the first touches, and on iPhone play a short silent clip so sound comes even with the
   // silent switch on.
-  var ctxs = [];
+  var ctxs = []; window.__todakCtxs = ctxs;
   var AC = window.AudioContext || window.webkitAudioContext;
   if (AC) {
     var Wrapped = function () { var c = new (Function.prototype.bind.apply(AC, [null].concat([].slice.call(arguments))))(); ctxs.push(c); return c; };
@@ -163,7 +163,7 @@ html, body { background: #120a06; }
 
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":25460168,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4,"serviceWorker":"index.service.worker.js"};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.wasm":39514754,"index-mw5mgduz.pck":25467768},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4,"serviceWorker":"index.service.worker.js","mainPack":"index-mw5mgduz.pck"};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
