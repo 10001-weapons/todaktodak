@@ -113,7 +113,59 @@ html, body { background: #120a06; }
   // 소리 (11-06: 소리가 안 나요): phones keep web audio asleep until a touch; wake every audio context the
   // game makes on the first touches, and on iPhone play a short silent clip so sound comes even with the
   // silent switch on.
+  // 끊김 (11-07): the engine's page hands every frame over through a blit that first asks WebGL for the scissor test
+  // and the bound framebuffer, and each such question waits for the GPU to catch up (a fifth of the frame in the
+  // CPU profile). Those two are answered from what was last set instead.
+  (function () {
+    var G = window.WebGL2RenderingContext; if (!G) return;
+    var P = G.prototype, en = P.enable, dis = P.disable, bind = P.bindFramebuffer, del = P.deleteFramebuffer, get = P.getParameter;
+    P.enable = function (c) { if (c === 0x0C11) this.__sc = true; return en.call(this, c); };
+    P.disable = function (c) { if (c === 0x0C11) this.__sc = false; return dis.call(this, c); };
+    P.bindFramebuffer = function (t, f) { if (t === 0x8D40 || t === 0x8CA9) this.__fb = f; return bind.call(this, t, f); };
+    P.deleteFramebuffer = function (f) { if (f && f === this.__fb) this.__fb = null; return del.call(this, f); };
+    P.getParameter = function (n) {
+      if (n === 0x0C11) { if (this.__sc === undefined) this.__sc = get.call(this, n); return this.__sc; }
+      if (n === 0x8CA6) { if (this.__fb === undefined) this.__fb = get.call(this, n); return this.__fb; }
+      return get.call(this, n);
+    };
+  })();
+  // 박자 (11-07): the engine's own frame cap waits by spinning on the clock (half the CPU in the profile, and the
+  // page cannot take a touch meanwhile). Instead the game's frame is run on every Nth screen refresh: 60 at most, 30
+  // when its frames take more than the 60's share, back to 60 when they fit again. todakPace.mode: auto / 30.
+  (function () {
+    var raf = window.requestAnimationFrame.bind(window);
+    var st = window.todakPace = { mode: 'auto', step: 1, vs: 16.7, work: 6, late: 0, n: 0, last: 0, ran: 0, hist: [] };
+    function choose() {
+      var base = Math.max(1, Math.round(16.7 / st.vs));
+      var slow = Math.max(base, Math.round(33.3 / st.vs));
+      if (st.mode === '30') st.step = slow;
+      else if (st.step < slow && (st.work > 0.8 * base * st.vs || st.late > 0.12)) st.step = slow;
+      else if (st.step > base && st.work < 0.45 * base * st.vs && st.late < 0.03) st.step = base;
+      else if (st.step < base) st.step = base;
+      st.n = 0; st.late = 0;
+    }
+    window.requestAnimationFrame = function (cb) {
+      if (cb.name !== 'MainLoop_runner') return raf(cb);
+      function tick(ts) {
+        // the refresh interval, from back-to-back refreshes only (a frame of the game in between makes it longer)
+        if (st.last) { var d = ts - st.last; if (d > 4 && d < st.vs * 1.4) st.vs += (d - st.vs) * 0.05; }
+        st.last = ts;
+        // by time, not by count: the game's own frame may span refreshes
+        if (st.ran && ts - st.ran < (st.step - 0.5) * st.vs) { raf(tick); return; }
+        if (st.ran) { st.late += ((ts - st.ran > (st.step + 0.5) * st.vs) ? 1 : 0) / 120; }
+        st.ran = ts;
+        if (st.hist.length < 8000) st.hist.push(ts);
+        var t0 = performance.now();
+        cb(ts);
+        st.work += (performance.now() - t0 - st.work) * 0.05;
+        if (++st.n >= 120) choose();
+      }
+      return raf(tick);
+    };
+  })();
   var ctxs = []; window.__todakCtxs = ctxs;
+  // iPhone (Safari 16.4+): play like a video does, so the silent switch does not mute the game
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
   var AC = window.AudioContext || window.webkitAudioContext;
   if (AC) {
     var Wrapped = function () { var c = new (Function.prototype.bind.apply(AC, [null].concat([].slice.call(arguments))))(); ctxs.push(c); return c; };
@@ -163,7 +215,7 @@ html, body { background: #120a06; }
 
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.wasm":39514754,"index-mw5pfz18.pck":25569744},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4,"serviceWorker":"index.service.worker.js","mainPack":"index-mw5pfz18.pck"};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.wasm":39514754,"index-mw5t65sm.pck":25579460},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4,"serviceWorker":"index.service.worker.js","mainPack":"index-mw5t65sm.pck"};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
